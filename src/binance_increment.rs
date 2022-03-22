@@ -30,7 +30,6 @@ impl BinanceIncrement {
     }
 }
 
-
 fn parse_binance_increment(result: &mut L2Increment, data: &str) -> bool {
     let increment: BinanceIncrement = match serde_json::from_str(data) {
         Ok(increment) => increment,
@@ -46,7 +45,11 @@ fn parse_binance_increment(result: &mut L2Increment, data: &str) -> bool {
 
 /// Parses one side of the [`BinanceIncrement`]. If success, then returns `true`, otherwise returns
 /// `false`. Output is saved in `holder` argument.
-fn parse_binance_increment_side(side: Side, holder: &mut L2Increment, binance_increment: &BinanceIncrement) -> bool {
+fn parse_binance_increment_side(
+    side: Side,
+    holder: &mut L2Increment,
+    binance_increment: &BinanceIncrement,
+) -> bool {
     let result = holder.get_mut(side);
     result.clear();
     let data = binance_increment.get(side);
@@ -69,9 +72,9 @@ fn parse_binance_increment_side(side: Side, holder: &mut L2Increment, binance_in
 
 #[cfg(test)]
 mod tests {
-    use crate::{Bid, L2Increment};
     use crate::binance_increment::parse_binance_increment;
     use crate::Side::Ask;
+    use crate::{Bid, L2Increment};
 
     #[test]
     fn parse_increment_1() {
