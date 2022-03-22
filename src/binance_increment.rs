@@ -43,8 +43,8 @@ fn parse_binance_increment(result: &mut L2Increment, data: &str) -> bool {
     true
 }
 
-/// Parses one side of the [`BinanceIncrement`]. If success, then returns `true`, otherwise returns
-/// `false`. Output is saved in `holder` argument.
+/// Parses one side of the [`BinanceIncrement`]. If success, then returns
+/// `true`, otherwise returns `false`. Output is saved in `holder` argument.
 fn parse_binance_increment_side(
     side: Side,
     holder: &mut L2Increment,

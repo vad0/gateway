@@ -30,6 +30,7 @@ impl L2Side {
     fn new() -> L2Side {
         L2Side { levels: Vec::new() }
     }
+
     fn clear(&mut self) {
         self.levels.clear()
     }
