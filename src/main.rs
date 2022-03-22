@@ -4,6 +4,7 @@ use strum_macros::EnumIter;
 use crate::Side::Bid;
 
 mod binance_increment;
+mod binance_snapshot;
 
 fn main() {
     println!("Hello world!");
