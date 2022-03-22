@@ -1,7 +1,12 @@
+use futures_util::StreamExt;
 use serde::Deserialize;
+use serde::Serialize;
 use strum::IntoEnumIterator;
+use tokio_tungstenite::connect_async;
+use url::Url;
 
-use crate::{L2Increment, Side};
+use crate::base::{L2Increment, Side};
+use crate::CurrencyPair;
 
 #[derive(Deserialize)]
 struct BinanceIncrement {
@@ -70,11 +75,50 @@ fn parse_binance_increment_side(
     return true;
 }
 
+pub async fn listen_increments() -> tungstenite::Result<()> {
+    let increment_address = "wss://stream.binance.com:9443/ws/bnbbtc@depth";
+    let url =
+        Url::parse(increment_address).expect(format!("Can't parse {}", increment_address).as_str());
+    let (mut socket, response) = connect_async(url)
+        .await
+        .expect(format!("Can't connect to {}", increment_address).as_str());
+    // let pair = CurrencyPair { base: Currency::BNB, term: Currency::BTC };
+    // let subscription = BinanceMdRequest::subscribe(vec![pair]);
+    // socket.send(Message::text(subscription.clone())).await?;
+    // println!("sent {}", subscription);
+    while let Some(msg) = socket.next().await {
+        println!("{}", msg.unwrap())
+    }
+    Ok(())
+}
+
+#[derive(Serialize)]
+struct BinanceMdRequest {
+    method: String,
+    topic: String,
+    symbols: Vec<String>,
+}
+
+impl BinanceMdRequest {
+    fn subscribe(currency_pairs: Vec<CurrencyPair>) -> String {
+        let request = BinanceMdRequest {
+            method: "subscribe".to_string(),
+            topic: "marketDepth".to_string(),
+            symbols: currency_pairs
+                .iter()
+                .map(crate::binance_utils::symbol)
+                .collect(),
+        };
+        serde_json::to_string(&request).unwrap()
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::base::L2Increment;
+    use crate::base::Side::Ask;
     use crate::binance_increment::parse_binance_increment;
-    use crate::Side::Ask;
-    use crate::{Bid, L2Increment};
+    use crate::Bid;
 
     #[test]
     fn parse_increment_1() {
