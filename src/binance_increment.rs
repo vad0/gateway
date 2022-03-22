@@ -18,7 +18,7 @@ struct BinanceIncrement {
     #[serde(rename = "b")]
     bids: Vec<Vec<String>>,
     #[serde(rename = "a")]
-    asks: Vec<Vec<String>>
+    asks: Vec<Vec<String>>,
 }
 
 impl BinanceIncrement {
