@@ -1,4 +1,4 @@
-use enum_map::{Enum, enum_map, EnumMap};
+use enum_map::{enum_map, Enum, EnumMap};
 use strum_macros::EnumIter;
 
 use crate::Side::Bid;
@@ -56,8 +56,8 @@ impl L2Increment {
                 sides: enum_map! {
                     Side::Bid=>L2Side::new(),
                     Side::Ask=>L2Side::new(),
-                }
-            }
+                },
+            },
         }
     }
 
