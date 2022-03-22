@@ -19,4 +19,5 @@ mod binance_utils;
 #[tokio::main]
 async fn main() {
     binance_snapshot::receive_snapshot().await;
+    // binance_increment::listen_increments().await;
 }
