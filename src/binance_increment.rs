@@ -5,7 +5,7 @@ use strum::IntoEnumIterator;
 use tokio_tungstenite::connect_async;
 use url::Url;
 
-use crate::base::{L2Increment, Side};
+use crate::base::{L2Update, Side};
 use crate::CurrencyPair;
 
 #[derive(Deserialize)]
@@ -35,24 +35,19 @@ impl BinanceIncrement {
     }
 }
 
-fn parse_binance_increment(result: &mut L2Increment, data: &str) -> bool {
+fn parse_binance_increment(result: &mut L2Update, data: &str) -> bool {
     let increment: BinanceIncrement = match serde_json::from_str(data) {
         Ok(increment) => increment,
         Err(_) => return false,
     };
-    for side in Side::iter() {
-        if !parse_binance_increment_side(side, result, &increment) {
-            return false;
-        }
-    }
-    true
+    Side::iter().all(|side| parse_binance_increment_side(side, result, &increment))
 }
 
 /// Parses one side of the [`BinanceIncrement`]. If success, then returns
 /// `true`, otherwise returns `false`. Output is saved in `holder` argument.
 fn parse_binance_increment_side(
     side: Side,
-    holder: &mut L2Increment,
+    holder: &mut L2Update,
     binance_increment: &BinanceIncrement,
 ) -> bool {
     let result = holder.get_mut(side);
@@ -67,10 +62,10 @@ fn parse_binance_increment_side(
             Err(_) => return false,
         };
         let size: f64 = match price_level[1].parse() {
-            Ok(p) => p,
+            Ok(s) => s,
             Err(_) => return false,
         };
-        result.add(price, size)
+        result.add(price, size);
     }
     return true;
 }
@@ -115,7 +110,7 @@ impl BinanceMdRequest {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::L2Increment;
+    use crate::base::L2Update;
     use crate::base::Side::Ask;
     use crate::binance_increment::parse_binance_increment;
     use crate::Bid;
@@ -141,11 +136,11 @@ mod tests {
             ]
           ]
         }"#;
-        let mut expected_increment = L2Increment::new();
+        let mut expected_increment = L2Update::new();
         expected_increment.get_mut(Bid).add(0.0024, 10.0);
         expected_increment.get_mut(Ask).add(0.0026, 100.0);
 
-        compare_increments(data, &mut expected_increment);
+        compare_updates(data, &expected_increment);
     }
 
     #[test]
@@ -164,16 +159,16 @@ mod tests {
           ],
           "a": []
         }"#;
-        let mut expected_increment = L2Increment::new();
+        let mut expected_increment = L2Update::new();
         expected_increment.get_mut(Bid).add(0.017564, 3.431);
 
-        compare_increments(data, &mut expected_increment);
+        compare_updates(data, &expected_increment);
     }
 
-    fn compare_increments(data: &str, expected_increment: &L2Increment) {
-        let holder = &mut L2Increment::new();
+    fn compare_updates(data: &str, expected_update: &L2Update) {
+        let holder = &mut L2Update::new();
         let success = parse_binance_increment(holder, data);
         assert!(success);
-        assert_eq!(expected_increment, holder);
+        assert_eq!(expected_update, holder);
     }
 }

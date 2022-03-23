@@ -1,3 +1,6 @@
+use std::array::IntoIter;
+use std::slice::Iter;
+
 use enum_map::{enum_map, Enum, EnumMap};
 use futures_util::sink::SinkExt;
 use futures_util::StreamExt;
@@ -21,10 +24,16 @@ pub struct CurrencyPair {
     pub term: Currency,
 }
 
-#[derive(Debug, Enum, EnumIter, Clone, Copy)]
+#[derive(Debug, Enum, Clone, Copy)]
 pub enum Side {
     Bid,
     Ask,
+}
+
+impl Side {
+    pub fn iter() -> IntoIter<Side, 2> {
+        [Side::Bid, Side::Ask].into_iter()
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -47,8 +56,9 @@ impl L2Side {
         self.levels.clear()
     }
 
-    pub fn add(&mut self, price: f64, size: f64) {
-        self.levels.push(PriceLevel { price, size })
+    pub fn add(&mut self, price: f64, size: f64) -> &mut Self {
+        self.levels.push(PriceLevel { price, size });
+        self
     }
 }
 
@@ -57,14 +67,15 @@ struct SideMap<V> {
     sides: EnumMap<Side, V>,
 }
 
+/// One data structure can be used for both snapshot and increment
 #[derive(PartialEq, Debug)]
-pub struct L2Increment {
+pub struct L2Update {
     side_map: SideMap<L2Side>,
 }
 
-impl L2Increment {
-    pub fn new() -> L2Increment {
-        L2Increment {
+impl L2Update {
+    pub fn new() -> L2Update {
+        L2Update {
             side_map: SideMap {
                 sides: enum_map! {
                     Side::Bid=>L2Side::new(),
