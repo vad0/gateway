@@ -1,28 +1,10 @@
 use std::array::IntoIter;
-use std::slice::Iter;
+use std::collections::HashMap;
 
 use enum_map::{enum_map, Enum, EnumMap};
-use futures_util::sink::SinkExt;
-use futures_util::StreamExt;
-use serde::Serialize;
-use strum_macros::Display;
-use strum_macros::EnumIter;
-use tokio_tungstenite::connect_async;
-use tungstenite::protocol::frame::coding::CloseCode::Error;
-use tungstenite::Message;
-use url::Url;
+use strum_macros::Display as enum_display;
 
-#[derive(Display)]
-pub enum Currency {
-    BNB,
-    BTC,
-    ETH,
-}
-
-pub struct CurrencyPair {
-    pub base: Currency,
-    pub term: Currency,
-}
+use crate::currencies::CurrencyPair;
 
 #[derive(Debug, Enum, Clone, Copy)]
 pub enum Side {
@@ -91,5 +73,42 @@ impl L2Update {
 
     pub fn get_mut(&mut self, side: Side) -> &mut L2Side {
         &mut self.side_map.sides[side]
+    }
+}
+
+#[derive(Debug)]
+pub struct InstrumentSettings {
+    currency_pair: CurrencyPair,
+    step_lot: f64,
+    price_step: f64,
+}
+
+impl InstrumentSettings {
+    pub fn new(currency_pair: CurrencyPair, step_lot: f64, price_step: f64) -> InstrumentSettings {
+        InstrumentSettings {
+            currency_pair,
+            step_lot,
+            price_step,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct SecurityList {
+    symbols: HashMap<CurrencyPair, InstrumentSettings>,
+}
+
+impl SecurityList {
+    pub fn new() -> SecurityList {
+        SecurityList {
+            symbols: HashMap::new(),
+        }
+    }
+
+    pub fn add(&mut self, instrument_settings: InstrumentSettings) {
+        self.symbols.insert(
+            instrument_settings.currency_pair.clone(),
+            instrument_settings,
+        );
     }
 }

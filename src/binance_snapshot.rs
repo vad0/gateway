@@ -1,11 +1,7 @@
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
-use enum_map::{enum_map, Enum, EnumMap};
 use reqwest::Client;
 use serde::Deserialize;
-use strum::IntoEnumIterator;
-use strum_macros::Display;
-use strum_macros::EnumIter;
 
 use crate::base::{L2Update, Side};
 use crate::binance_utils::{parse_binance_update_side, BinanceUpdate};

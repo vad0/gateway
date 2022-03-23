@@ -1,5 +1,5 @@
 use crate::base::{L2Update, Side};
-use crate::CurrencyPair;
+use crate::currencies::CurrencyPair;
 
 pub fn symbol(currency_pair: &CurrencyPair) -> String {
     format!("{}{}", currency_pair.base, currency_pair.term)

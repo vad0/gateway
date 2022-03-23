@@ -3,13 +3,13 @@ use std::time::SystemTime;
 use futures_util::StreamExt;
 use serde::Deserialize;
 use serde::Serialize;
-use strum::IntoEnumIterator;
 use tokio_tungstenite::connect_async;
 use url::Url;
 
 use crate::base::{L2Update, Side};
+use crate::binance_utils;
 use crate::binance_utils::BinanceUpdate;
-use crate::{binance_utils, CurrencyPair};
+use crate::currencies::CurrencyPair;
 
 #[derive(Deserialize)]
 struct BinanceIncrement {
@@ -57,7 +57,7 @@ pub async fn listen_increments() -> tungstenite::Result<()> {
     let increment_address = "wss://stream.binance.com:9443/ws/bnbbtc@depth";
     let url =
         Url::parse(increment_address).expect(format!("Can't parse {}", increment_address).as_str());
-    let (mut socket, response) = connect_async(url)
+    let (mut socket, _) = connect_async(url)
         .await
         .expect(format!("Can't connect to {}", increment_address).as_str());
     let mut increment = L2Update::new();
