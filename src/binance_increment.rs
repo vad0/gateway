@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use futures_util::StreamExt;
 use serde::Deserialize;
 use serde::Serialize;
@@ -6,7 +8,8 @@ use tokio_tungstenite::connect_async;
 use url::Url;
 
 use crate::base::{L2Update, Side};
-use crate::CurrencyPair;
+use crate::binance_utils::BinanceUpdate;
+use crate::{binance_utils, CurrencyPair};
 
 #[derive(Deserialize)]
 struct BinanceIncrement {
@@ -26,7 +29,7 @@ struct BinanceIncrement {
     asks: Vec<Vec<String>>,
 }
 
-impl BinanceIncrement {
+impl BinanceUpdate for BinanceIncrement {
     fn get(&self, side: Side) -> &Vec<Vec<String>> {
         match side {
             Side::Bid => &self.bids,
@@ -36,38 +39,18 @@ impl BinanceIncrement {
 }
 
 fn parse_binance_increment(result: &mut L2Update, data: &str) -> bool {
+    let start = SystemTime::now();
     let increment: BinanceIncrement = match serde_json::from_str(data) {
         Ok(increment) => increment,
         Err(_) => return false,
     };
-    Side::iter().all(|side| parse_binance_increment_side(side, result, &increment))
-}
-
-/// Parses one side of the [`BinanceIncrement`]. If success, then returns
-/// `true`, otherwise returns `false`. Output is saved in `holder` argument.
-fn parse_binance_increment_side(
-    side: Side,
-    holder: &mut L2Update,
-    binance_increment: &BinanceIncrement,
-) -> bool {
-    let result = holder.get_mut(side);
-    result.clear();
-    let data = binance_increment.get(side);
-    for price_level in data {
-        if price_level.len() != 2 {
-            return false;
-        }
-        let price: f64 = match price_level[0].parse() {
-            Ok(p) => p,
-            Err(_) => return false,
-        };
-        let size: f64 = match price_level[1].parse() {
-            Ok(s) => s,
-            Err(_) => return false,
-        };
-        result.add(price, size);
+    let success =
+        Side::iter().all(|side| binance_utils::parse_binance_update_side(side, result, &increment));
+    match start.elapsed() {
+        Ok(elapsed) => println!("Increment parsing time: {}", elapsed.as_micros()),
+        Err(e) => println!("Error: {}", e),
     }
-    return true;
+    success
 }
 
 pub async fn listen_increments() -> tungstenite::Result<()> {
@@ -77,12 +60,10 @@ pub async fn listen_increments() -> tungstenite::Result<()> {
     let (mut socket, response) = connect_async(url)
         .await
         .expect(format!("Can't connect to {}", increment_address).as_str());
-    // let pair = CurrencyPair { base: Currency::BNB, term: Currency::BTC };
-    // let subscription = BinanceMdRequest::subscribe(vec![pair]);
-    // socket.send(Message::text(subscription.clone())).await?;
-    // println!("sent {}", subscription);
+    let mut increment = L2Update::new();
     while let Some(msg) = socket.next().await {
-        println!("{}", msg.unwrap())
+        parse_binance_increment(&mut increment, msg.unwrap().to_string().as_str());
+        println!("{:?}", increment)
     }
     Ok(())
 }

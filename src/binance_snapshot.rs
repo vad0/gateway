@@ -1,3 +1,5 @@
+use std::time::{Duration, SystemTime};
+
 use enum_map::{enum_map, Enum, EnumMap};
 use reqwest::Client;
 use serde::Deserialize;
@@ -6,6 +8,7 @@ use strum_macros::Display;
 use strum_macros::EnumIter;
 
 use crate::base::{L2Update, Side};
+use crate::binance_utils::{parse_binance_update_side, BinanceUpdate};
 
 pub async fn receive_snapshot() -> Result<(), reqwest::Error> {
     let snapshot_address = "https://api.binance.com/api/v3/depth?symbol=BNBBTC&limit=1000";
@@ -13,8 +16,10 @@ pub async fn receive_snapshot() -> Result<(), reqwest::Error> {
         .build()
         .expect("Unable to create websocket client");
     let res = client.get(snapshot_address).send().await?;
-    let snapshot = res.text().await?;
-    println!("{}", snapshot);
+    let message = res.text().await?;
+    let mut snapshot = L2Update::new();
+    parse_binance_snapshot(&mut snapshot, message.as_str());
+    println!("{:?}", snapshot);
     tungstenite::Result::Ok(())
 }
 
@@ -26,7 +31,7 @@ struct BinanceSnapshot {
     asks: Vec<Vec<String>>,
 }
 
-impl BinanceSnapshot {
+impl BinanceUpdate for BinanceSnapshot {
     fn get(&self, side: Side) -> &Vec<Vec<String>> {
         match side {
             Side::Bid => &self.bids,
@@ -36,36 +41,17 @@ impl BinanceSnapshot {
 }
 
 fn parse_binance_snapshot(result: &mut L2Update, data: &str) -> bool {
-    let increment: BinanceSnapshot = match serde_json::from_str(data) {
+    let start = SystemTime::now();
+    let snapshot: BinanceSnapshot = match serde_json::from_str(data) {
         Ok(snapshot) => snapshot,
         Err(_) => return false,
     };
-    Side::iter().all(|side| parse_binance_snapshot_side(side, result, &increment))
-}
-
-fn parse_binance_snapshot_side(
-    side: Side,
-    holder: &mut L2Update,
-    binance_snapshot: &BinanceSnapshot,
-) -> bool {
-    let result = holder.get_mut(side);
-    result.clear();
-    let data = binance_snapshot.get(side);
-    for price_level in data {
-        if price_level.len() != 2 {
-            return false;
-        }
-        let price: f64 = match price_level[0].parse() {
-            Ok(p) => p,
-            Err(_) => return false,
-        };
-        let size: f64 = match price_level[1].parse() {
-            Ok(s) => s,
-            Err(_) => return false,
-        };
-        result.add(price, size);
+    let success = Side::iter().all(|side| parse_binance_update_side(side, result, &snapshot));
+    match start.elapsed() {
+        Ok(elapsed) => println!("Snapshot parsing time: {}", elapsed.as_micros()),
+        Err(e) => println!("Error: {}", e),
     }
-    return true;
+    success
 }
 
 #[cfg(test)]
