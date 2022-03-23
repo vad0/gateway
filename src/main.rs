@@ -11,6 +11,6 @@ mod currencies;
 #[tokio::main]
 async fn main() {
     // binance_snapshot::receive_snapshot().await;
-    // binance_increment::listen_increments().await;
-    binance_security_list::request_security_list().await;
+    binance_increment::listen_increments().await;
+    // binance_security_list::request_security_list().await;
 }

@@ -1,6 +1,8 @@
 use crate::base::{L2Update, Side};
 use crate::currencies::CurrencyPair;
 
+pub const HTTP_ADDRESS: &str = "https://api.binance.com/api/v3/";
+
 pub fn symbol(currency_pair: &CurrencyPair) -> String {
     format!("{}{}", currency_pair.base, currency_pair.term)
 }
@@ -34,4 +36,17 @@ pub fn parse_binance_update_side(
         result.add(price, size);
     }
     return true;
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::binance_utils::symbol;
+    use crate::currencies::Currency::{BNB, BTC};
+    use crate::CurrencyPair;
+
+    #[test]
+    fn test_to_string() {
+        let pair = CurrencyPair::new(BTC, BNB);
+        let str = symbol(&pair);
+    }
 }

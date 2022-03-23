@@ -5,11 +5,12 @@ use serde::Deserialize;
 use serde_json::Map;
 
 use crate::base::{InstrumentSettings, SecurityList};
+use crate::binance_utils::HTTP_ADDRESS;
 use crate::currencies::Currency;
 use crate::CurrencyPair;
 
 pub async fn request_security_list() -> Result<(), String> {
-    let address = "https://api.binance.com/api/v3/exchangeInfo";
+    let address = HTTP_ADDRESS.to_owned() + "exchangeInfo";
     let client = Client::builder().build().expect("Failed to create client");
     let res = client
         .get(address)

@@ -4,18 +4,25 @@ use reqwest::Client;
 use serde::Deserialize;
 
 use crate::base::{L2Update, Side};
-use crate::binance_utils::{parse_binance_update_side, BinanceUpdate};
+use crate::binance_utils::{parse_binance_update_side, symbol, BinanceUpdate, HTTP_ADDRESS};
+use crate::currencies::Currency::{BNB, BTC};
+use crate::CurrencyPair;
 
 pub async fn receive_snapshot() -> Result<(), reqwest::Error> {
-    let snapshot_address = "https://api.binance.com/api/v3/depth?symbol=BNBBTC&limit=1000";
     let client = Client::builder()
         .build()
         .expect("Unable to create websocket client");
+    let currency_pair = &CurrencyPair::new(BNB, BTC);
+    let snapshot_address = format!(
+        "{}depth?symbol={}&limit=1000",
+        HTTP_ADDRESS,
+        symbol(currency_pair)
+    );
     let res = client.get(snapshot_address).send().await?;
     let message = res.text().await?;
     let mut snapshot = L2Update::new();
     parse_binance_snapshot(&mut snapshot, message.as_str());
-    println!("{:?}", snapshot);
+    // println!("{:?}", snapshot);
     tungstenite::Result::Ok(())
 }
 
@@ -44,7 +51,7 @@ fn parse_binance_snapshot(result: &mut L2Update, data: &str) -> bool {
     };
     let success = Side::iter().all(|side| parse_binance_update_side(side, result, &snapshot));
     match start.elapsed() {
-        Ok(elapsed) => println!("Snapshot parsing time: {}", elapsed.as_micros()),
+        Ok(elapsed) => println!("Snapshot parsing time: {}us", elapsed.as_micros()),
         Err(e) => println!("Error: {}", e),
     }
     success
@@ -52,10 +59,10 @@ fn parse_binance_snapshot(result: &mut L2Update, data: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::base::L2Update;
     use crate::base::Side::Ask;
+    use crate::base::{L2Update, Side};
     use crate::binance_snapshot::parse_binance_snapshot;
-    use crate::Bid;
+    use crate::currencies::Currency::{BNB, BTC};
 
     #[test]
     fn parse_snapshot() {
@@ -84,7 +91,7 @@ mod tests {
         }"#;
         let mut expected_snapshot = L2Update::new();
         expected_snapshot
-            .get_mut(Bid)
+            .get_mut(Side::Bid)
             .add(0.00216090, 22.67)
             .add(0.0021608, 29.43);
         expected_snapshot

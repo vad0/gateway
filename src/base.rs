@@ -2,7 +2,6 @@ use std::array::IntoIter;
 use std::collections::HashMap;
 
 use enum_map::{enum_map, Enum, EnumMap};
-use strum_macros::Display as enum_display;
 
 use crate::currencies::CurrencyPair;
 
