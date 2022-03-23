@@ -3,13 +3,37 @@ use std::time::SystemTime;
 use futures_util::StreamExt;
 use serde::Deserialize;
 use serde::Serialize;
-use strum::IntoEnumIterator;
 use tokio_tungstenite::connect_async;
 use url::Url;
 
 use crate::base::{L2Update, Side};
-use crate::binance_utils::BinanceUpdate;
-use crate::{binance_utils, CurrencyPair};
+use crate::binance_utils;
+use crate::binance_utils::{symbol, BinanceUpdate};
+use crate::currencies::Currency::{BNB, BTC};
+use crate::currencies::CurrencyPair;
+
+pub async fn listen_increments() -> tungstenite::Result<()> {
+    let currency_pair = CurrencyPair::new(BNB, BTC);
+    let address = get_websocket_address(&currency_pair);
+    println!("Subscribing for {}", address);
+    let url = Url::parse(address.as_str()).expect(format!("Can't parse {}", address).as_str());
+    let (mut socket, _) = connect_async(url)
+        .await
+        .expect(format!("Can't connect to {}", address).as_str());
+    let mut increment = L2Update::new();
+    while let Some(msg) = socket.next().await {
+        parse_binance_increment(&mut increment, msg.unwrap().to_string().as_str());
+        println!("{:?}", increment)
+    }
+    Ok(())
+}
+
+fn get_websocket_address(currency_pair: &CurrencyPair) -> String {
+    format!(
+        "wss://stream.binance.com:9443/ws/{}@depth",
+        symbol(&currency_pair).to_lowercase()
+    )
+}
 
 #[derive(Deserialize)]
 struct BinanceIncrement {
@@ -47,25 +71,10 @@ fn parse_binance_increment(result: &mut L2Update, data: &str) -> bool {
     let success =
         Side::iter().all(|side| binance_utils::parse_binance_update_side(side, result, &increment));
     match start.elapsed() {
-        Ok(elapsed) => println!("Increment parsing time: {}", elapsed.as_micros()),
+        Ok(elapsed) => println!("Increment parsing time: {}us", elapsed.as_micros()),
         Err(e) => println!("Error: {}", e),
     }
     success
-}
-
-pub async fn listen_increments() -> tungstenite::Result<()> {
-    let increment_address = "wss://stream.binance.com:9443/ws/bnbbtc@depth";
-    let url =
-        Url::parse(increment_address).expect(format!("Can't parse {}", increment_address).as_str());
-    let (mut socket, response) = connect_async(url)
-        .await
-        .expect(format!("Can't connect to {}", increment_address).as_str());
-    let mut increment = L2Update::new();
-    while let Some(msg) = socket.next().await {
-        parse_binance_increment(&mut increment, msg.unwrap().to_string().as_str());
-        println!("{:?}", increment)
-    }
-    Ok(())
 }
 
 #[derive(Serialize)]
@@ -93,8 +102,9 @@ impl BinanceMdRequest {
 mod tests {
     use crate::base::L2Update;
     use crate::base::Side::Ask;
-    use crate::binance_increment::parse_binance_increment;
-    use crate::Bid;
+    use crate::binance_increment::{get_websocket_address, parse_binance_increment};
+    use crate::currencies::Currency::{BNB, BTC};
+    use crate::{Bid, CurrencyPair};
 
     #[test]
     fn parse_increment_1() {
@@ -151,5 +161,13 @@ mod tests {
         let success = parse_binance_increment(holder, data);
         assert!(success);
         assert_eq!(expected_update, holder);
+    }
+
+    #[test]
+    fn test_websocket_address() {
+        let currency_pair = CurrencyPair::new(BNB, BTC);
+        let address = get_websocket_address(&currency_pair);
+        let expected = "wss://stream.binance.com:9443/ws/bnbbtc@depth";
+        assert_eq!(expected, address);
     }
 }
