@@ -3,6 +3,7 @@ use std::fmt::{Debug, Display, Formatter};
 use strum_macros::{Display, EnumString};
 
 #[derive(Debug, Display, Clone, Copy, PartialEq, Eq, Hash, EnumString)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum Currency {
     BNB,
     BTC,
