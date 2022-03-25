@@ -9,11 +9,11 @@ use url::Url;
 use crate::base::{L2Update, Side};
 use crate::binance_utils;
 use crate::binance_utils::{symbol, BinanceUpdate};
-use crate::currencies::Currency::{BNB, BTC};
+use crate::currencies::Currency::{BNB, BTC, USDT};
 use crate::currencies::CurrencyPair;
 
 pub async fn listen_increments() -> tungstenite::Result<()> {
-    let currency_pair = CurrencyPair::new(BNB, BTC);
+    let currency_pair = CurrencyPair::new(BTC, USDT);
     let address = get_websocket_address(&currency_pair);
     println!("Subscribing for {}", address);
     let url = Url::parse(address.as_str()).expect(format!("Can't parse {}", address).as_str());
@@ -23,15 +23,15 @@ pub async fn listen_increments() -> tungstenite::Result<()> {
     let mut increment = L2Update::new();
     while let Some(msg) = socket.next().await {
         parse_binance_increment(&mut increment, msg.unwrap().to_string().as_str());
-        println!("{:?}", increment)
+        // println!("{:?}", increment)
     }
     Ok(())
 }
 
 fn get_websocket_address(currency_pair: &CurrencyPair) -> String {
     format!(
-        "wss://stream.binance.com:9443/ws/{}@depth",
-        symbol(&currency_pair).to_lowercase()
+        "wss://stream.binance.com:9443/ws/{}@depth@100ms",
+        symbol(currency_pair).to_lowercase()
     )
 }
 
@@ -71,7 +71,13 @@ fn parse_binance_increment(result: &mut L2Update, data: &str) -> bool {
     let success =
         Side::iter().all(|side| binance_utils::parse_binance_update_side(side, result, &increment));
     match start.elapsed() {
-        Ok(elapsed) => println!("Increment parsing time: {}us", elapsed.as_micros()),
+        Ok(elapsed) => {
+            let micros = elapsed.as_micros();
+            println!("Increment parsing time: {}us", micros);
+            if micros > 100 {
+                println!("{}", data);
+            }
+        }
         Err(e) => println!("Error: {}", e),
     }
     success
@@ -167,7 +173,7 @@ mod tests {
     fn test_websocket_address() {
         let currency_pair = CurrencyPair::new(BNB, BTC);
         let address = get_websocket_address(&currency_pair);
-        let expected = "wss://stream.binance.com:9443/ws/bnbbtc@depth";
+        let expected = "wss://stream.binance.com:9443/ws/bnbbtc@depth@100ms";
         assert_eq!(expected, address);
     }
 }

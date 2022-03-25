@@ -23,3 +23,10 @@ reqwest = "0.11.10"
 [[bin]]
 name = "gateway"
 path = "src/main.rs"
+
+[profile.release]
+lto = true
+opt-level = 3               # all optimizations
+overflow-checks = false     # Disable integer overflow checks.
+codegen-units = 1
+target-cpu = "native" # optimize for current CPU instruction set
